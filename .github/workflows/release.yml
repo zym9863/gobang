@@ -6,6 +6,10 @@ on:
       - 'v*'  # 当推送以 v 开头的标签时触发，如 v1.0.0
   workflow_dispatch:  # 允许手动触发
 
+permissions:
+  contents: write
+  actions: read
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -92,22 +96,19 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.VERSION }}
-          release_name: Gobang ${{ steps.get_version.outputs.VERSION }}
+          name: Gobang ${{ steps.get_version.outputs.VERSION }}
           body: |
             ## 🎮 五子棋游戏 - ${{ steps.get_version.outputs.VERSION }}
             
             ### 📦 下载说明
             - **Windows 用户**: 下载 `gobang-windows-x64.zip`，解压后运行 `gobang.exe`
             - **Android 用户**: 根据设备架构选择对应的 APK 文件
-              - `app-arm64-v8a-release.apk`: 适用于大多数现代 Android 设备
-              - `app-armeabi-v7a-release.apk`: 适用于较老的 ARM 设备
-              - `app-x86_64-release.apk`: 适用于 x86_64 架构设备
+              - `gobang-arm64-v8a-release.apk`: 适用于大多数现代 Android 设备
+              - `gobang-armeabi-v7a-release.apk`: 适用于较老的 ARM 设备
+              - `gobang-x86_64-release.apk`: 适用于 x86_64 架构设备
             
             ### ✨ 功能特性
             - 经典五子棋游戏体验
@@ -118,43 +119,11 @@ jobs:
             - 初始版本发布
           draft: false
           prerelease: false
-
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
+          files: |
+            gobang-windows-x64.zip
+            app-arm64-v8a-release.apk
+            app-armeabi-v7a-release.apk
+            app-x86_64-release.apk
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./gobang-windows-x64.zip
-          asset_name: gobang-windows-x64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Android ARM64 Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./app-arm64-v8a-release.apk
-          asset_name: gobang-arm64-v8a-release.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Upload Android ARMv7a Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./app-armeabi-v7a-release.apk
-          asset_name: gobang-armeabi-v7a-release.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Upload Android x86_64 Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./app-x86_64-release.apk
-          asset_name: gobang-x86_64-release.apk
-          asset_content_type: application/vnd.android.package-archive
