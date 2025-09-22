@@ -18,118 +18,374 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('五子棋'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        elevation: 8,
+        shadowColor: Colors.black26,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _buildStatusBar(),
-          ),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: GameBoard(
-                  gameModel: _gameModel,
-                  onTap: _handleBoardTap,
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // 增强状态栏区域
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 24.0),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  width: 1,
+                ),
+              ),
+              child: _buildEnhancedStatusBar(),
+            ),
+            // 游戏统计信息
+            _buildGameStats(),
+            // 棋盘区域
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: GameBoard(
+                    gameModel: _gameModel,
+                    onTap: _handleBoardTap,
+                  ),
                 ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _buildControlButtons(),
-          ),
-        ],
+            // 增强控制按钮区域
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(20.0),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: _buildEnhancedControlButtons(),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildStatusBar() {
+  Widget _buildEnhancedStatusBar() {
     String statusText = '';
     Color statusColor = Colors.black;
+    IconData statusIcon = Icons.circle;
 
     switch (_gameModel.status) {
       case GameStatus.playing:
         statusText = '当前玩家: ${_gameModel.currentPlayer == PieceType.black ? "黑棋" : "白棋"}';
         statusColor = _gameModel.currentPlayer == PieceType.black ? Colors.black : Colors.grey.shade700;
+        statusIcon = _gameModel.currentPlayer == PieceType.black ? Icons.circle : Icons.circle_outlined;
       case GameStatus.blackWin:
-        statusText = '黑棋胜利！';
+        statusText = '🎉 黑棋胜利！';
         statusColor = Colors.black;
+        statusIcon = Icons.emoji_events;
       case GameStatus.whiteWin:
-        statusText = '白棋胜利！';
+        statusText = '🎉 白棋胜利！';
         statusColor = Colors.grey.shade700;
+        statusIcon = Icons.emoji_events;
       case GameStatus.draw:
-        statusText = '平局！';
+        statusText = '🤝 平局！';
         statusColor = Colors.blue;
+        statusIcon = Icons.handshake;
     }
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(
-          statusText,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: statusColor,
+        Icon(
+          statusIcon,
+          color: statusColor,
+          size: 28,
+        ),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            statusText,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              color: statusColor,
+              fontSize: 22,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
         if (_isAIThinking) ...[  
           const SizedBox(width: 16),
-          const SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'AI思考中...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ],
     );
   }
 
-  Widget _buildControlButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  Widget _buildGameStats() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStatItem('步数', '${_gameModel.history.length}', Icons.timeline),
+          Container(
+            width: 1,
+            height: 30,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          ),
+          _buildStatItem('难度', _getDifficultyText(), Icons.psychology),
+          Container(
+            width: 1,
+            height: 30,
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          ),
+          _buildStatItem('模式', 'AI对战', Icons.smart_toy),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        ElevatedButton(
-          onPressed: _resetGame,
-          child: const Text('重新开始'),
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).colorScheme.primary,
         ),
-        ElevatedButton(
-          onPressed: _undoMove,
-          child: const Text('悔棋'),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-          PopupMenuButton<AIDifficulty>(
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedControlButtons() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 主要控制按钮
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _resetGame,
+                icon: const Icon(Icons.refresh, size: 20),
+                label: const Text('重新开始'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _gameModel.history.isEmpty ? null : _undoMove,
+                icon: const Icon(Icons.undo, size: 20),
+                label: const Text('悔棋'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _gameModel.history.isEmpty 
+                    ? Colors.grey.shade400 
+                    : Theme.of(context).colorScheme.secondary,
+                  foregroundColor: _gameModel.history.isEmpty 
+                    ? Colors.grey.shade600 
+                    : Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // AI难度选择器
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: PopupMenuButton<AIDifficulty>(
             initialValue: _gameModel.aiDifficulty,
             onSelected: _changeAIDifficulty,
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: AIDifficulty.easy,
-                child: Text('简单'),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.sentiment_satisfied_alt,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('简单'),
+                    if (_gameModel.aiDifficulty == AIDifficulty.easy)
+                      const Spacer(),
+                    if (_gameModel.aiDifficulty == AIDifficulty.easy)
+                      const Icon(Icons.check, color: Colors.green, size: 16),
+                  ],
+                ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: AIDifficulty.medium,
-                child: Text('中等'),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.sentiment_neutral,
+                      color: Colors.orange,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('中等'),
+                    if (_gameModel.aiDifficulty == AIDifficulty.medium)
+                      const Spacer(),
+                    if (_gameModel.aiDifficulty == AIDifficulty.medium)
+                      const Icon(Icons.check, color: Colors.orange, size: 16),
+                  ],
+                ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: AIDifficulty.hard,
-                child: Text('困难'),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.sentiment_very_dissatisfied,
+                      color: Colors.red,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('困难'),
+                    if (_gameModel.aiDifficulty == AIDifficulty.hard)
+                      const Spacer(),
+                    if (_gameModel.aiDifficulty == AIDifficulty.hard)
+                      const Icon(Icons.check, color: Colors.red, size: 16),
+                  ],
+                ),
               ),
             ],
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(_getDifficultyText()),
-                  const Icon(Icons.arrow_drop_down),
+                  Icon(
+                    _getDifficultyIcon(),
+                    size: 20,
+                    color: _getDifficultyColor(),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AI难度: ${_getDifficultyText()}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.arrow_drop_down, size: 24),
                 ],
               ),
             ),
           ),
+        ),
       ],
     );
+  }
+
+  IconData _getDifficultyIcon() {
+    switch (_gameModel.aiDifficulty) {
+      case AIDifficulty.easy:
+        return Icons.sentiment_satisfied_alt;
+      case AIDifficulty.medium:
+        return Icons.sentiment_neutral;
+      case AIDifficulty.hard:
+        return Icons.sentiment_very_dissatisfied;
+    }
+  }
+
+  Color _getDifficultyColor() {
+    switch (_gameModel.aiDifficulty) {
+      case AIDifficulty.easy:
+        return Colors.green;
+      case AIDifficulty.medium:
+        return Colors.orange;
+      case AIDifficulty.hard:
+        return Colors.red;
+    }
   }
 
   String _getDifficultyText() {

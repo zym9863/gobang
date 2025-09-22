@@ -17,31 +17,52 @@ class GameBoard extends StatelessWidget {
       aspectRatio: 1.0,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFFAF8F1), // 宣纸白色
-          borderRadius: BorderRadius.circular(16), // 更大的圆角
+          // 更丰富的背景渐变
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFFFAF8F1), // 宣纸白色
+              const Color(0xFFE8E5DA), // 古绢米色
+              const Color(0xFFF5F3EB), // 淡象牙色
+            ],
+            stops: const [0.0, 0.7, 1.0],
+          ),
+          borderRadius: BorderRadius.circular(20), // 更大的圆角
           boxShadow: [
+            // 多层阴影效果
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.15),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+              spreadRadius: 2,
             ),
             BoxShadow(
-              color: const Color(0xFF6B5A45).withOpacity(0.08),
-              blurRadius: 4,
-              offset: const Offset(0, 1),
+              color: const Color(0xFF6B5A45).withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+            // 内阴影效果
+            BoxShadow(
+              color: Colors.white.withOpacity(0.5),
+              blurRadius: 6,
+              offset: const Offset(-2, -2),
             ),
           ],
           border: Border.all(
-            color: const Color(0xFFE8E5DA), // 古绢米色边框
-            width: 1.5,
+            color: const Color(0xFF8B4513).withOpacity(0.3), // 深褐色边框
+            width: 2,
           ),
         ),
-        child: CustomPaint(
-          painter: BoardPainter(gameModel),
-          child: GestureDetector(
-            onTapUp: (details) {
-              _handleTap(context, details);
-            },
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: CustomPaint(
+            painter: BoardPainter(gameModel),
+            child: GestureDetector(
+              onTapUp: (details) {
+                _handleTap(context, details);
+              },
+            ),
           ),
         ),
       ),
@@ -75,27 +96,70 @@ class BoardPainter extends CustomPainter {
     final boardSize = GameModel.boardSize;
     final cellSize = size.width / boardSize;
 
-    // 绘制棋盘背景
-    final backgroundPaint = Paint()
+    // 绘制棋盘纹理背景
+    _drawBoardTexture(canvas, size);
+    
+    // 绘制网格线
+    _drawGridLines(canvas, size, cellSize, boardSize);
+    
+    // 绘制标记点
+    _drawStarPoints(canvas, cellSize, boardSize);
+
+    // 绘制棋子
+    for (int row = 0; row < boardSize; row++) {
+      for (int col = 0; col < boardSize; col++) {
+        if (gameModel.board[row][col] != PieceType.none) {
+          _drawPiece(canvas, row, col, cellSize, gameModel.board[row][col]);
+        }
+      }
+    }
+    
+    // 绘制获胜线
+    _drawWinningLine(canvas, cellSize, boardSize);
+  }
+
+  void _drawBoardTexture(Canvas canvas, Size size) {
+    // 添加细微的纹理效果
+    final texturePaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          const Color(0xFFFAF8F1),
-          const Color(0xFFE8E5DA).withOpacity(0.7),
+          const Color(0xFFFAF8F1).withOpacity(0.8),
+          const Color(0xFFE8E5DA).withOpacity(0.6),
+          const Color(0xFFF5F3EB).withOpacity(0.9),
         ],
+        stops: const [0.0, 0.5, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
     
-    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), backgroundPaint);
+    canvas.drawRect(Rect.fromLTWH(0, 0, size.width, size.height), texturePaint);
     
-    // 绘制网格线
+    // 添加古典纸张质感的细微线条
+    final paperTexturePaint = Paint()
+      ..color = const Color(0xFF6B5A45).withOpacity(0.03)
+      ..strokeWidth = 0.3;
+    
+    for (int i = 0; i < size.width; i += 4) {
+      canvas.drawLine(
+        Offset(i.toDouble(), 0),
+        Offset(i.toDouble(), size.height),
+        paperTexturePaint,
+      );
+    }
+  }
+
+  void _drawGridLines(Canvas canvas, Size size, double cellSize, int boardSize) {
     final paint = Paint()
-      ..color = const Color(0xFF6B5A45).withOpacity(0.5) // 淡墨色
-      ..strokeWidth = 0.7 // 更细腻的线条
+      ..color = const Color(0xFF6B5A45).withOpacity(0.6) // 更深的墨色
+      ..strokeWidth = 1.0 // 稍微加粗线条
       ..style = PaintingStyle.stroke;
 
     // 绘制横线和竖线
     for (int i = 0; i < boardSize; i++) {
+      // 边框线条稍微加粗
+      final lineWidth = (i == 0 || i == boardSize - 1) ? 1.5 : 1.0;
+      paint.strokeWidth = lineWidth;
+      
       // 横线
       canvas.drawLine(
         Offset(0, i * cellSize),
@@ -110,10 +174,11 @@ class BoardPainter extends CustomPainter {
         paint,
       );
     }
+  }
 
-    // 绘制棋盘上的标记点
+  void _drawStarPoints(Canvas canvas, double cellSize, int boardSize) {
     final dotPaint = Paint()
-      ..color = const Color(0xFF6B5A45).withOpacity(0.7) // 淡墨色
+      ..color = const Color(0xFF8B4513).withOpacity(0.8) // 深褐色星位
       ..style = PaintingStyle.fill;
 
     // 标准五子棋的天元和星位
@@ -125,63 +190,128 @@ class BoardPainter extends CustomPainter {
     ];
 
     for (var point in starPoints) {
-      // 绘制阴阳鱼变形符号
       final centerOffset = Offset(point[1] * cellSize, point[0] * cellSize);
       
-      // 绘制小圆点
-      canvas.drawCircle(
-        centerOffset,
-        2.2,
-        dotPaint,
-      );
+      // 绘制主圆点，天元稍大
+      final isCenter = (point[0] == centerPoint && point[1] == centerPoint);
+      final radius = isCenter ? 3.2 : 2.8;
       
-      // 绘制外圈
+      canvas.drawCircle(centerOffset, radius, dotPaint);
+      
+      // 绘制外圈光晕
       final outerPaint = Paint()
-        ..color = const Color(0xFF6B5A45).withOpacity(0.3)
+        ..color = const Color(0xFF8B4513).withOpacity(0.3)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.5;
+        ..strokeWidth = 0.8;
         
-      canvas.drawCircle(
-        centerOffset,
-        3.5,
-        outerPaint,
-      );
+      canvas.drawCircle(centerOffset, radius + 2, outerPaint);
     }
+  }
 
-    // 绘制棋子
-    for (int row = 0; row < boardSize; row++) {
-      for (int col = 0; col < boardSize; col++) {
-        if (gameModel.board[row][col] != PieceType.none) {
-          _drawPiece(canvas, row, col, cellSize, gameModel.board[row][col]);
-        }
-      }
+  void _drawWinningLine(Canvas canvas, double cellSize, int boardSize) {
+    // 如果游戏结束且有获胜者，绘制获胜线
+    if (gameModel.status == GameStatus.blackWin || gameModel.status == GameStatus.whiteWin) {
+      // 这里可以添加获胜线的绘制逻辑
+      // 为了简化，暂时跳过具体实现
     }
   }
 
   void _drawPiece(Canvas canvas, int row, int col, double cellSize, PieceType type) {
     final center = Offset(col * cellSize, row * cellSize);
-    final radius = cellSize * 0.42; // 调整棋子大小
-    
-    // 绘制棋子阴影
+    final radius = cellSize * 0.44; // 稍微增大棋子
+
+    // 绘制棋子阴影 - 更真实的阴影效果
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(0.15)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0);
+      ..color = Colors.black.withOpacity(0.2)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0);
     
     canvas.drawCircle(
-      Offset(center.dx + 0.5, center.dy + 0.8),
+      Offset(center.dx + 1.5, center.dy + 2),
       radius - 1,
       shadowPaint
     );
 
     if (type == PieceType.black) {
-      // 黑棋 - 玄青色渐变效果
+      // 黑棋 - 深邃玄黑渐变
       final gradient = RadialGradient(
         colors: [
-          const Color(0xFF2A2D34), // 玄青色
-          const Color(0xFF3F4553), // 过渡色
-          const Color(0xFF1A1C20), // 更深的玄青色
+          const Color(0xFF1A1A1A), // 深黑色中心
+          const Color(0xFF2C2C2C), // 过渡色
+          const Color(0xFF404040), // 边缘略亮
+          const Color(0xFF0D0D0D), // 最外圈最深
         ],
-        stops: const [0.3, 0.7, 1.0],
+        stops: const [0.0, 0.4, 0.8, 1.0],
+        focal: Alignment(-0.3, -0.3),
+      );
+
+      final paint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = gradient.createShader(Rect.fromCircle(
+          center: center,
+          radius: radius,
+        ));
+
+      // 绘制黑棋主体
+      canvas.drawCircle(center, radius, paint);
+
+      // 添加高光 - 模拟玉石光泽
+      final highlightPaint = Paint()
+        ..style = PaintingStyle.fill
+        ..shader = RadialGradient(
+          colors: [
+            Colors.white.withOpacity(0.25),
+            Colors.white.withOpacity(0.05),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.6, 1.0],
+        ).createShader(Rect.fromCircle(
+          center: Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
+          radius: radius * 0.45,
+        ));
+
+      canvas.drawCircle(
+        Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
+        radius * 0.45,
+        highlightPaint,
+      );
+      
+      // 添加细微的纹理效果
+      final texturePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = const Color(0xFF555555).withOpacity(0.3)
+        ..strokeWidth = 0.5;
+      
+      // 绘制弧形纹理
+      for (int i = 0; i < 2; i++) {
+        final startAngle = 0.3 + i * 0.8;
+        final sweepAngle = 0.8;
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: radius * (0.6 + i * 0.2)),
+          startAngle,
+          sweepAngle,
+          false,
+          texturePaint,
+        );
+      }
+      
+      // 绘制边缘高光
+      final edgeHighlightPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..color = const Color(0xFF666666).withOpacity(0.4)
+        ..strokeWidth = 0.8;
+      
+      canvas.drawCircle(center, radius - 0.5, edgeHighlightPaint);
+      
+    } else {
+      // 白棋 - 温润象牙白渐变
+      final gradient = RadialGradient(
+        colors: [
+          const Color(0xFFFFFFF8), // 略带暖色的白
+          const Color(0xFFF8F6F0), // 象牙白
+          const Color(0xFFEFEDE6), // 米白色
+          const Color(0xFFE8E4DC), // 边缘稍深
+        ],
+        stops: const [0.0, 0.3, 0.7, 1.0],
         focal: Alignment(-0.2, -0.2),
       );
 
@@ -192,18 +322,19 @@ class BoardPainter extends CustomPainter {
           radius: radius,
         ));
 
-      // 绘制黑棋
+      // 绘制白棋主体
       canvas.drawCircle(center, radius, paint);
 
-      // 添加微光泽 - 更自然的高光
+      // 添加高光 - 温润玉石光泽
       final highlightPaint = Paint()
         ..style = PaintingStyle.fill
         ..shader = RadialGradient(
           colors: [
-            Colors.white.withOpacity(0.15),
-            Colors.white.withOpacity(0.0),
+            Colors.white.withOpacity(0.9),
+            Colors.white.withOpacity(0.3),
+            Colors.transparent,
           ],
-          stops: const [0.0, 1.0],
+          stops: const [0.0, 0.5, 1.0],
         ).createShader(Rect.fromCircle(
           center: Offset(center.dx - radius * 0.3, center.dy - radius * 0.3),
           radius: radius * 0.4,
@@ -215,78 +346,18 @@ class BoardPainter extends CustomPainter {
         highlightPaint,
       );
       
-      // 添加金属质感纹理
-      final texturePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..color = const Color(0xFF515A6B).withOpacity(0.2)
-        ..strokeWidth = 0.3;
-      
-      // 绘制几条弧线模拟金属纹理
-      for (int i = 0; i < 3; i++) {
-        final startAngle = 0.2 + i * 0.4;
-        final sweepAngle = 0.6;
-        canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius * (0.5 + i * 0.15)),
-          startAngle,
-          sweepAngle,
-          false,
-          texturePaint,
-        );
-      }
-    } else {
-      // 白棋 - 象牙白色渐变
-      final gradient = RadialGradient(
-        colors: [
-          const Color(0xFFF0EDE5), // 象牙白
-          const Color(0xFFFFFFFF), // 纯白过渡
-          const Color(0xFFE8E4DC), // 稍深的象牙白
-        ],
-        stops: const [0.3, 0.6, 1.0],
-        focal: Alignment(-0.1, -0.1),
-      );
-
-      final paint = Paint()
-        ..style = PaintingStyle.fill
-        ..shader = gradient.createShader(Rect.fromCircle(
-          center: center,
-          radius: radius,
-        ));
-
-      // 绘制白棋
-      canvas.drawCircle(center, radius, paint);
-
-      // 优化高光效果 - 更自然的玉石光泽
-      final highlightPaint = Paint()
-        ..style = PaintingStyle.fill
-        ..shader = RadialGradient(
-          colors: [
-            Colors.white.withOpacity(0.8),
-            Colors.white.withOpacity(0.0),
-          ],
-          stops: const [0.0, 1.0],
-        ).createShader(Rect.fromCircle(
-          center: Offset(center.dx - radius * 0.25, center.dy - radius * 0.25),
-          radius: radius * 0.35,
-        ));
-
-      canvas.drawCircle(
-        Offset(center.dx - radius * 0.25, center.dy - radius * 0.25),
-        radius * 0.35,
-        highlightPaint,
-      );
-      
       // 添加玉石纹理
       final texturePaint = Paint()
         ..style = PaintingStyle.stroke
-        ..color = const Color(0xFFDCD8CF).withOpacity(0.4)
-        ..strokeWidth = 0.4;
+        ..color = const Color(0xFFDDD8CF).withOpacity(0.5)
+        ..strokeWidth = 0.6;
       
-      // 绘制几条弧线模拟玉石纹理
+      // 绘制弧形纹理
       for (int i = 0; i < 2; i++) {
-        final startAngle = 0.8 + i * 0.7;
-        final sweepAngle = 0.8;
+        final startAngle = 1.0 + i * 0.9;
+        final sweepAngle = 0.9;
         canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius * (0.6 + i * 0.15)),
+          Rect.fromCircle(center: center, radius: radius * (0.65 + i * 0.15)),
           startAngle,
           sweepAngle,
           false,
@@ -295,31 +366,40 @@ class BoardPainter extends CustomPainter {
       }
     }
 
-    // 绘制棋子边缘 - 更细腻的边缘
+    // 绘制棋子边缘 - 更精致的边框
     final borderPaint = Paint()
       ..style = PaintingStyle.stroke
       ..color = type == PieceType.black 
-          ? const Color(0xFF1A1C20).withOpacity(0.6) 
-          : const Color(0xFF6B5A45).withOpacity(0.25)
-      ..strokeWidth = 0.7;
+          ? const Color(0xFF000000).withOpacity(0.8) 
+          : const Color(0xFF8B4513).withOpacity(0.4)
+      ..strokeWidth = 1.0;
 
     canvas.drawCircle(center, radius, borderPaint);
 
-    // 添加落子动效 - 同心圆扩散
+    // 添加落子动效和最新棋子标记
     if (gameModel.history.isNotEmpty) {
       final lastMove = gameModel.history.last;
       if (row == lastMove.row && col == lastMove.col) {
-        // 绘制外圈动效 - 多层同心圆
-        for (int i = 0; i < 2; i++) {
+        // 绘制最新落子标记 - 脉动效果
+        for (int i = 0; i < 3; i++) {
           final effectPaint = Paint()
             ..style = PaintingStyle.stroke
             ..color = type == PieceType.black 
-                ? const Color(0xFF2A2D34).withOpacity(0.2 - i * 0.05) 
-                : const Color(0xFFF0EDE5).withOpacity(0.3 - i * 0.1)
-            ..strokeWidth = 1.2 - i * 0.3;
+                ? const Color(0xFFFFFFFF).withOpacity(0.4 - i * 0.1) 
+                : const Color(0xFF8B4513).withOpacity(0.5 - i * 0.1)
+            ..strokeWidth = 2.0 - i * 0.5;
 
-          canvas.drawCircle(center, radius * (1.2 + i * 0.15), effectPaint);
+          canvas.drawCircle(center, radius * (1.15 + i * 0.1), effectPaint);
         }
+        
+        // 中心标记点
+        final centerMarkPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = type == PieceType.black 
+              ? Colors.white.withOpacity(0.8) 
+              : const Color(0xFF8B4513).withOpacity(0.8);
+
+        canvas.drawCircle(center, 2.5, centerMarkPaint);
       }
     }
   }
