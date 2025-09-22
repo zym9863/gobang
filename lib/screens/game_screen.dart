@@ -45,7 +45,19 @@ class _GameScreenState extends State<GameScreen> {
                   width: 1,
                 ),
               ),
-              child: _buildEnhancedStatusBar(),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(begin: const Offset(0.0, 0.3), end: Offset.zero)
+                        .chain(CurveTween(curve: Curves.easeOutCubic)),
+                    ),
+                    child: FadeTransition(opacity: animation, child: child),
+                  );
+                },
+                child: _buildEnhancedStatusBar(),
+              ),
             ),
             // 游戏统计信息
             _buildGameStats(),
@@ -110,6 +122,7 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     return Row(
+      key: ValueKey('${_gameModel.status}_${_gameModel.currentPlayer}_${_isAIThinking}'),
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
@@ -161,7 +174,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildGameStats() {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -194,30 +208,34 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
           ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
+          const SizedBox(height: 4),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+            child: Text(value),
           ),
-        ),
-      ],
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -229,36 +247,54 @@ class _GameScreenState extends State<GameScreen> {
         Row(
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _resetGame,
-                icon: const Icon(Icons.refresh, size: 20),
-                label: const Text('重新开始'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  child: ElevatedButton.icon(
+                    onPressed: _resetGame,
+                    icon: const Icon(Icons.refresh, size: 20),
+                    label: const Text('重新开始'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 4,
+                      shadowColor: Colors.black26,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _gameModel.history.isEmpty ? null : _undoMove,
-                icon: const Icon(Icons.undo, size: 20),
-                label: const Text('悔棋'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _gameModel.history.isEmpty 
-                    ? Colors.grey.shade400 
-                    : Theme.of(context).colorScheme.secondary,
-                  foregroundColor: _gameModel.history.isEmpty 
-                    ? Colors.grey.shade600 
-                    : Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              child: MouseRegion(
+                cursor: _gameModel.history.isEmpty 
+                  ? SystemMouseCursors.forbidden 
+                  : SystemMouseCursors.click,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  child: ElevatedButton.icon(
+                    onPressed: _gameModel.history.isEmpty ? null : _undoMove,
+                    icon: const Icon(Icons.undo, size: 20),
+                    label: const Text('悔棋'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _gameModel.history.isEmpty 
+                        ? Colors.grey.shade400 
+                        : Theme.of(context).colorScheme.secondary,
+                      foregroundColor: _gameModel.history.isEmpty 
+                        ? Colors.grey.shade600 
+                        : Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: _gameModel.history.isEmpty ? 0 : 4,
+                      shadowColor: Colors.black26,
+                    ),
                   ),
                 ),
               ),
@@ -401,6 +437,14 @@ class _GameScreenState extends State<GameScreen> {
 
   void _handleBoardTap(int row, int col) {
     if (_gameModel.status != GameStatus.playing || _isAIThinking) {
+      // 显示游戏状态反馈
+      _showGameStatusFeedback();
+      return;
+    }
+
+    // 检查位置是否已被占用
+    if (_gameModel.board[row][col] != PieceType.none) {
+      _showInvalidMoveFeedback();
       return;
     }
 
@@ -412,7 +456,7 @@ class _GameScreenState extends State<GameScreen> {
         _isAIThinking = true;
         
         // 使用Future.delayed来模拟AI思考时间，并避免UI卡顿
-        Future.delayed(const Duration(milliseconds: 500), () {
+        Future.delayed(const Duration(milliseconds: 800), () {
           if (!mounted) return;
           
           // 获取AI的落子位置
@@ -427,6 +471,55 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  void _showInvalidMoveFeedback() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.block, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text('该位置已有棋子！'),
+          ],
+        ),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
+  }
+
+  void _showGameStatusFeedback() {
+    String message = '';
+    if (_gameModel.status != GameStatus.playing) {
+      message = '游戏已结束，请重新开始！';
+    } else if (_isAIThinking) {
+      message = 'AI正在思考中，请稍候...';
+    }
+
+    if (message.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.info, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Text(message),
+            ],
+          ),
+          duration: const Duration(seconds: 1),
+          backgroundColor: Colors.blue.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+        ),
+      );
+    }
+  }
+
   void _resetGame() {
     setState(() {
       _gameModel.resetGame();
@@ -435,17 +528,40 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _undoMove() {
+    if (_gameModel.history.isEmpty) return;
+    
     setState(() {
       _gameModel.undoMove();
       _isAIThinking = false;
     });
   }
 
-  // AI模式相关方法已移除，现在游戏只有AI模式
-
   void _changeAIDifficulty(AIDifficulty difficulty) {
     setState(() {
       _gameModel.aiDifficulty = difficulty;
     });
+    
+    // 显示难度变更提示
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              _getDifficultyIcon(),
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text('AI难度已设置为: ${_getDifficultyText()}'),
+          ],
+        ),
+        duration: const Duration(seconds: 2),
+        backgroundColor: _getDifficultyColor(),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 }

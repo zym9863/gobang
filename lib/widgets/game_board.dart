@@ -209,11 +209,70 @@ class BoardPainter extends CustomPainter {
   }
 
   void _drawWinningLine(Canvas canvas, double cellSize, int boardSize) {
-    // 如果游戏结束且有获胜者，绘制获胜线
+    // 如果游戏结束且有获胜者，添加庆祝效果
     if (gameModel.status == GameStatus.blackWin || gameModel.status == GameStatus.whiteWin) {
-      // 这里可以添加获胜线的绘制逻辑
-      // 为了简化，暂时跳过具体实现
+      // 绘制胜利光芒效果
+      _drawVictoryEffects(canvas, cellSize, boardSize);
     }
+  }
+
+  void _drawVictoryEffects(Canvas canvas, double cellSize, int boardSize) {
+    final center = Offset(
+      boardSize * cellSize / 2,
+      boardSize * cellSize / 2,
+    );
+    
+    // 绘制胜利光芒
+    final victoryPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          Colors.amber.withOpacity(0.1),
+          Colors.orange.withOpacity(0.05),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.6, 1.0],
+      ).createShader(Rect.fromCircle(
+        center: center,
+        radius: boardSize * cellSize * 0.6,
+      ));
+    
+    canvas.drawCircle(center, boardSize * cellSize * 0.6, victoryPaint);
+    
+    // 绘制星光效果
+    final sparkles = [
+      Offset(center.dx - 50, center.dy - 80),
+      Offset(center.dx + 60, center.dy - 60),
+      Offset(center.dx - 40, center.dy + 70),
+      Offset(center.dx + 45, center.dy + 55),
+      Offset(center.dx - 70, center.dy + 20),
+      Offset(center.dx + 80, center.dy - 20),
+    ];
+    
+    final sparklePaint = Paint()
+      ..color = Colors.amber.withOpacity(0.6)
+      ..style = PaintingStyle.fill;
+    
+    for (final sparkle in sparkles) {
+      _drawSparkle(canvas, sparkle, sparklePaint);
+    }
+  }
+
+  void _drawSparkle(Canvas canvas, Offset center, Paint paint) {
+    const sparkleSize = 8.0;
+    final path = Path();
+    
+    // 绘制四角星
+    path.moveTo(center.dx, center.dy - sparkleSize);
+    path.lineTo(center.dx + sparkleSize * 0.3, center.dy - sparkleSize * 0.3);
+    path.lineTo(center.dx + sparkleSize, center.dy);
+    path.lineTo(center.dx + sparkleSize * 0.3, center.dy + sparkleSize * 0.3);
+    path.lineTo(center.dx, center.dy + sparkleSize);
+    path.lineTo(center.dx - sparkleSize * 0.3, center.dy + sparkleSize * 0.3);
+    path.lineTo(center.dx - sparkleSize, center.dy);
+    path.lineTo(center.dx - sparkleSize * 0.3, center.dy - sparkleSize * 0.3);
+    path.close();
+    
+    canvas.drawPath(path, paint);
   }
 
   void _drawPiece(Canvas canvas, int row, int col, double cellSize, PieceType type) {
